@@ -2,16 +2,23 @@
 {
     init: function(elevators, floors) {
         // solution-v0.2
-        // Elapsed time 2007
-        // Avg waiting time 13.8s
-        // Max waiting time 62.5s
+        // for challenge 19 
+        // 
+        // Transported         2996
+        // Elapsed time        2013s
+        // Transported/s       1.49
+        // Avg waiting time    13.9s
+        // Max waiting time    46.6s
+        // Moves               21183
 
         MAX_FLOOR = floors.length;
         MAX_ELEV = elevators.length;
 
         UP_TASK_INTERNAL = MAX_FLOOR * 100;
 
+        // Array of those floors that need to go up
         _uplist = new Array();
+        // Array of those floors that need to go down
         _downlist = new Array();
         //===============================
         //CONSTANTS
@@ -43,6 +50,7 @@
             this.length -= 1;  
         };  
         //===============================
+        // execute 'go up' task
         function startUpTask(e){
             if(e.state == STATE_IDLE){
                 e.stop();
@@ -60,6 +68,7 @@
             e.goToFloor(0);
         }
 
+        // execute 'go down' task
         function startDownTask(e){
             if(e.state == STATE_IDLE){
                 e.stop();
@@ -67,20 +76,26 @@
             e.state = STATE_DOWN;
             e.goingUpIndicator(false);
             e.goingDownIndicator(true);
+
             var c = e.currentFloor();
             if(floors[c].buttonStates.down!=""){
+                // the elevator will leave this floor
+                // if down button is still pressed , add it to _downlist
                 _downlist.push(c);
                 _downlist = _downlist.unique().sort(function(a,b){
                     return a<b;
                 });
             }
             if(isFull(e)){
+                // goto 0 floor when elevator is full
                 e.goToFloor(0);
             }else{
                 if(e.loadFactor()==0){
+                    // if elevator is empty , goto the highest floor
                     e.goToFloor(_downlist[0]);
                     _downlist.shift();
                 }else{
+                    // find next floor 
                     var nextFloor = 0;
                     for(var j=0;j<_downlist.length;j++){
                         if(_downlist[j]<c){
@@ -96,8 +111,10 @@
             }
         }
 
+        // TODO:the function need to refine
         function assignTask(e){
             if(e.loadFactor()!=0 && e.state == STATE_DOWN){
+                // the elevator is executing 'go down' task , let it continue
                 startDownTask(e);
                 return "down";
             }
@@ -105,13 +122,9 @@
                 startDownTask(e);
                 return "down";
             }
-            // if(e.currentFloor()==0 && _uplist.length>0){
-            //     startUpTask(e);
-            //     return "up";
-            // }
             if(_uplist.length==0){
                 if(_downlist.length==0){
-                    // e.goToFloor(e.idle_floor);
+                    e.goToFloor(e.idle_floor);
                     return "";
                 }else{
                     startDownTask(e);
@@ -122,6 +135,9 @@
                     startUpTask(e);
                     return "up";
                 }else{
+                    // if those elevators executing 'go up' outnumber those executing 'go down'
+                    // the idle elevator will execute 'go down' task
+                    // otherwise , execute 'go up'.
                     var upCount = 0;
                     var downCount = 0;
                     for(var i=0;i<MAX_ELEV;i++){
@@ -158,8 +174,6 @@
             e.ei = i;
             e.state = STATE_IDLE;
             e.idle_floor = Math.round(p * (i) + 0.5);
-            // e.idle_floor = 0;
-            e.startWaitingTime = 0;
 
             e.on("floor_button_pressed", function(n) {
                 if(n > 0){
@@ -179,7 +193,6 @@
                 // Do nothing
             });
             e.on("idle",function(){
-                // console.log(this.ei+" idle");
                 assignTask(this);
             });    
         }
@@ -190,6 +203,7 @@
             console.log("e "+i+ " weight = "+e.weight);
         }
 
+        // notify idle elevators to work
         function notifyElevators(){
             for(var i=0;i<MAX_ELEV;i++){
                 var e = elevators[i];
